@@ -1,0 +1,32 @@
+{
+  "entries": [
+    {
+      "id": "example-nas",
+      "label": "NAS web UI",
+      "host": "192.168.1.10",
+      "ports": [80, 443, 5000],
+      "types": ["http", "https", "tcp"]
+    },
+    {
+      "id": "example-db",
+      "label": "Postgres",
+      "host": "192.168.1.20",
+      "ports": [5432],
+      "types": ["tcp"]
+    },
+    {
+      "id": "example-router-ping",
+      "label": "Router (ping only)",
+      "host": "192.168.1.1",
+      "ports": "any",
+      "types": ["ping"]
+    },
+    {
+      "id": "example-subnet",
+      "label": "Whole lab subnet (ping + tcp)",
+      "host": "10.0.0.0/24",
+      "ports": "any",
+      "types": ["ping", "tcp"]
+    }
+  ]
+}

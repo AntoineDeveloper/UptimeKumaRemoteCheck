@@ -1,0 +1,19 @@
+# Secrets / local config — NEVER commit these
+.env
+.env.local
+.env.*.local
+
+# Live allowlist (may contain your internal hostnames/IPs). Keep the example only.
+config/allowlist.json
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-error.log*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.swp
+.idea/
+.vscode/

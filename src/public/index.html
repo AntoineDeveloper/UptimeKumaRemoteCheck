@@ -1,0 +1,321 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="robots" content="noindex,nofollow" />
+<title>Uptime Kuma Remote Check — Allowlist</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a212b; --panel2: #222b38; --line: #2c3744;
+    --text: #e6edf3; --muted: #8b98a5; --accent: #4f9cf9; --good: #3fb950;
+    --bad: #f85149; --warn: #d29922;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
+         background: var(--bg); color: var(--text); }
+  header { padding: 16px 24px; border-bottom: 1px solid var(--line); display: flex;
+           align-items: center; justify-content: space-between; }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; }
+  header .right { display: flex; gap: 12px; align-items: center; }
+  main { max-width: 1000px; margin: 0 auto; padding: 24px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+          padding: 20px; margin-bottom: 20px; }
+  h2 { font-size: 14px; margin: 0 0 16px; color: var(--muted); text-transform: uppercase;
+       letter-spacing: .05em; }
+  label { display: block; font-size: 12px; color: var(--muted); margin: 0 0 4px; }
+  input, select { width: 100%; padding: 9px 10px; background: var(--panel2);
+          border: 1px solid var(--line); border-radius: 7px; color: var(--text);
+          font-size: 13px; font-family: inherit; }
+  input:focus, select:focus { outline: none; border-color: var(--accent); }
+  button { padding: 9px 14px; border: 1px solid var(--line); border-radius: 7px;
+           background: var(--panel2); color: var(--text); cursor: pointer; font-size: 13px;
+           font-family: inherit; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #04101f;
+                   font-weight: 600; }
+  button.danger { color: var(--bad); }
+  .row { display: grid; grid-template-columns: 1.4fr 1.6fr .9fr 1.4fr auto; gap: 10px;
+         align-items: end; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th, td { text-align: left; padding: 10px 8px; border-bottom: 1px solid var(--line);
+           vertical-align: middle; }
+  th { color: var(--muted); font-weight: 500; font-size: 11px; text-transform: uppercase; }
+  code { background: var(--panel2); padding: 2px 6px; border-radius: 4px; font-size: 12px; }
+  .tag { display: inline-block; background: var(--panel2); border: 1px solid var(--line);
+         border-radius: 5px; padding: 1px 7px; font-size: 11px; margin: 1px; }
+  .actions { display: flex; gap: 6px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  .hidden { display: none !important; }
+  #toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 16px; border-radius: 8px;
+           font-size: 13px; max-width: 360px; }
+  #toast.good { background: #11331c; border: 1px solid var(--good); color: #aef0bf; }
+  #toast.bad { background: #3a1413; border: 1px solid var(--bad); color: #ffc0bc; }
+  .login-wrap { max-width: 360px; margin: 80px auto; }
+  .result { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px;
+            white-space: pre-wrap; background: var(--panel2); padding: 10px; border-radius: 7px;
+            border: 1px solid var(--line); margin-top: 8px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot.up { background: var(--good); } .dot.down { background: var(--bad); }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginView" class="login-wrap hidden">
+  <div class="card">
+    <h2>Sign in</h2>
+    <p class="muted">Enter the admin password to manage the allowlist.</p>
+    <label for="pw">Password</label>
+    <input id="pw" type="password" autocomplete="current-password" />
+    <div style="margin-top: 14px;">
+      <button class="primary" id="loginBtn" style="width:100%">Sign in</button>
+    </div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="appView" class="hidden">
+  <header>
+    <h1>🛰️ Uptime Kuma Remote Check</h1>
+    <div class="right">
+      <span class="muted">Allowlist manager</span>
+      <button id="logoutBtn">Log out</button>
+    </div>
+  </header>
+  <main>
+    <div class="card">
+      <h2 id="formTitle">Add allowlist entry</h2>
+      <div class="row">
+        <div>
+          <label>Label</label>
+          <input id="f_label" placeholder="NAS" />
+        </div>
+        <div>
+          <label>Host / IP / CIDR</label>
+          <input id="f_host" placeholder="192.168.1.10 or 192.168.1.0/24" />
+        </div>
+        <div>
+          <label>Ports (comma, or blank=any)</label>
+          <input id="f_ports" placeholder="80,443" />
+        </div>
+        <div>
+          <label>Types</label>
+          <select id="f_types" multiple size="1" style="height:38px">
+            <option value="any" selected>any</option>
+            <option value="http">http</option>
+            <option value="https">https</option>
+            <option value="tcp">tcp</option>
+            <option value="ping">ping</option>
+          </select>
+        </div>
+        <div class="actions">
+          <button class="primary" id="saveBtn">Add</button>
+          <button id="cancelBtn" class="hidden">Cancel</button>
+        </div>
+      </div>
+      <p class="muted" style="margin:12px 0 0">
+        Tip: hold Ctrl/Cmd to select multiple types. Leave ports blank for "any".
+        CIDR (e.g. <code>10.0.0.0/24</code>) only matches IPv4 literals.
+      </p>
+    </div>
+
+    <div class="card">
+      <h2>Current allowlist (<span id="count">0</span>) — hot-reloaded live</h2>
+      <table>
+        <thead>
+          <tr><th>Label</th><th>Host</th><th>Ports</th><th>Types</th><th></th></tr>
+        </thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <p id="empty" class="muted hidden">No entries yet. All checks are denied until you add one.</p>
+    </div>
+  </main>
+</div>
+
+<div id="toast" class="hidden"></div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let editingId = null;
+
+function toast(msg, ok = true) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.className = ok ? 'good' : 'bad';
+  setTimeout(() => (t.className = 'hidden'), 3500);
+}
+
+async function api(method, path, body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  });
+  let data = {};
+  try { data = await res.json(); } catch {}
+  if (!res.ok) throw new Error(data.error || data.reason || ('HTTP ' + res.status));
+  return data;
+}
+
+function selectedTypes() {
+  const opts = [...$('f_types').selectedOptions].map((o) => o.value);
+  if (opts.includes('any') || opts.length === 0) return 'any';
+  return opts;
+}
+
+function parsePorts(v) {
+  v = v.trim();
+  if (!v) return 'any';
+  return v.split(',').map((x) => parseInt(x.trim(), 10)).filter((n) => !isNaN(n));
+}
+
+function fmtPorts(p) { return p === 'any' ? 'any' : p.join(', '); }
+function fmtTypes(t) {
+  const arr = t === 'any' ? ['any'] : t;
+  return arr.map((x) => `<span class="tag">${x}</span>`).join('');
+}
+
+function render(entries) {
+  $('count').textContent = entries.length;
+  $('empty').classList.toggle('hidden', entries.length > 0);
+  const tbody = $('tbody');
+  tbody.innerHTML = '';
+  for (const e of entries) {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${escapeHtml(e.label)}</td>
+      <td><code>${escapeHtml(e.host)}</code></td>
+      <td>${escapeHtml(fmtPorts(e.ports))}</td>
+      <td>${fmtTypes(e.types)}</td>
+      <td class="actions">
+        <button data-act="test">Test</button>
+        <button data-act="edit">Edit</button>
+        <button data-act="del" class="danger">Delete</button>
+        <div class="result hidden" data-result></div>
+      </td>`;
+    tr.querySelector('[data-act=edit]').onclick = () => startEdit(e);
+    tr.querySelector('[data-act=del]').onclick = () => del(e.id);
+    tr.querySelector('[data-act=test]').onclick = () => testEntry(e, tr.querySelector('[data-result]'));
+    tbody.appendChild(tr);
+  }
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, (c) =>
+    ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+}
+
+async function load() {
+  const data = await api('GET', '/admin/api/allowlist');
+  render(data.entries);
+}
+
+function formData() {
+  return {
+    label: $('f_label').value.trim() || $('f_host').value.trim(),
+    host: $('f_host').value.trim(),
+    ports: parsePorts($('f_ports').value),
+    types: selectedTypes(),
+  };
+}
+
+function resetForm() {
+  editingId = null;
+  $('f_label').value = $('f_host').value = $('f_ports').value = '';
+  [...$('f_types').options].forEach((o) => (o.selected = o.value === 'any'));
+  $('formTitle').textContent = 'Add allowlist entry';
+  $('saveBtn').textContent = 'Add';
+  $('cancelBtn').classList.add('hidden');
+}
+
+function startEdit(e) {
+  editingId = e.id;
+  $('f_label').value = e.label;
+  $('f_host').value = e.host;
+  $('f_ports').value = e.ports === 'any' ? '' : e.ports.join(',');
+  const types = e.types === 'any' ? ['any'] : e.types;
+  [...$('f_types').options].forEach((o) => (o.selected = types.includes(o.value)));
+  $('formTitle').textContent = 'Edit allowlist entry';
+  $('saveBtn').textContent = 'Save';
+  $('cancelBtn').classList.remove('hidden');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+async function save() {
+  const body = formData();
+  if (!body.host) return toast('Host is required', false);
+  try {
+    if (editingId) {
+      await api('PUT', '/admin/api/allowlist/' + editingId, body);
+      toast('Entry updated');
+    } else {
+      await api('POST', '/admin/api/allowlist', body);
+      toast('Entry added');
+    }
+    resetForm();
+    await load();
+  } catch (err) {
+    toast(err.message, false);
+  }
+}
+
+async function del(id) {
+  if (!confirm('Delete this allowlist entry?')) return;
+  try {
+    await api('DELETE', '/admin/api/allowlist/' + id);
+    toast('Entry deleted');
+    await load();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function testEntry(e, el) {
+  const type = e.types === 'any' ? 'ping' : e.types[0];
+  const port = e.ports === 'any' ? undefined : e.ports[0];
+  el.classList.remove('hidden');
+  el.textContent = 'Testing ' + type + '…';
+  try {
+    const { result } = await api('POST', '/admin/api/test', { type, host: e.host, port });
+    const dot = result.up ? '<span class="dot up"></span>UP' : '<span class="dot down"></span>DOWN';
+    el.innerHTML = dot + ' — ' + escapeHtml(result.message) +
+      (result.rttMs != null ? ' (' + result.rttMs + ' ms)' : '');
+  } catch (err) {
+    el.innerHTML = '<span class="dot down"></span>' + escapeHtml(err.message);
+  }
+}
+
+async function login() {
+  try {
+    await api('POST', '/admin/api/login', { password: $('pw').value });
+    $('pw').value = '';
+    showApp();
+  } catch (err) { toast(err.message, false); }
+}
+
+async function logout() {
+  await api('POST', '/admin/api/logout');
+  $('appView').classList.add('hidden');
+  $('loginView').classList.remove('hidden');
+}
+
+async function showApp() {
+  $('loginView').classList.add('hidden');
+  $('appView').classList.remove('hidden');
+  await load();
+}
+
+async function init() {
+  $('loginBtn').onclick = login;
+  $('pw').addEventListener('keydown', (e) => e.key === 'Enter' && login());
+  $('logoutBtn').onclick = logout;
+  $('saveBtn').onclick = save;
+  $('cancelBtn').onclick = resetForm;
+
+  const { authenticated } = await api('GET', '/admin/api/session');
+  if (authenticated) showApp();
+  else $('loginView').classList.remove('hidden');
+}
+init();
+</script>
+</body>
+</html>

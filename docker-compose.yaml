@@ -1,0 +1,18 @@
+services:
+  uptimekuma-remotecheck:
+    build: .
+    ports:
+      # host:container — change the host side if 3010 is taken
+      - "3010:3010"
+    restart: always
+    env_file:
+      # Your secrets / settings. Run `npm run setup` first to create this.
+      - .env.local
+    environment:
+      - TZ=America/Toronto
+    volumes:
+      # Bind-mount the project so editing config/allowlist.json on the host is
+      # hot-reloaded inside the container with no restart.
+      - .:/usr/src/app
+      # Keep the image's installed node_modules (don't let the bind mount hide them).
+      - /usr/src/app/node_modules
