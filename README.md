@@ -149,6 +149,27 @@ A check is allowed only if an entry matches **all three** of type, host, and por
 
 ---
 
+## Known limitations & residual risks
+
+This tool is, by design, **a controlled proxy into your private network**. Everything below is gated behind `AUTH_SECRET` — none of it is reachable without a valid secret — so these are all *"what's the blast radius if the secret leaks?"* considerations, not things the open internet can do. They are documented here deliberately; the current code does **not** mitigate them beyond the allowlist.
+
+- **A secret-holder can probe any path on an allowlisted host.** The allowlist matches on **host + port + type only — not path**. So once a host:port is allowed, a caller with the secret can hit *any* URL path on it. This is intentional (it's what makes flexible HTTP monitors possible), but it means the allowlist limits *which hosts*, not *which endpoints*.
+
+- **A secret-holder can send non-GET requests, including state-changing ones.** The `/check` endpoint forwards the `method` parameter (and an optional request body). That means `POST`/`PUT`/`DELETE` to an allowlisted internal service is possible. Internal services that trust anything on the local network could therefore be *acted upon*, not just read, by someone holding the secret. There is currently **no method allowlist**.
+
+- **The `keyword` check is a blind content oracle.** The relay never returns response bodies — only the status code, response time, and a yes/no for whether your `keyword` appears. That yes/no is, in principle, a slow character-by-character exfiltration oracle for body content on allowlisted hosts. Low severity (tedious, no bulk read), but it exists.
+
+**Mitigations that are *your* responsibility (the tool won't do them for you):**
+
+- Scope the allowlist as tightly as possible — exact hosts and exact ports, not broad CIDRs or `"ports": "any"` — so a leaked secret can reach as little as possible.
+- Treat `AUTH_SECRET` as a high-value credential: long, random, rotated, and never committed.
+- Strongly consider restricting inbound access to your Uptime Kuma server's source IP at the firewall / reverse proxy, so a leaked secret is useless from anywhere else.
+- If a target service performs sensitive actions on non-GET requests, do not allowlist it (or front it with something that ignores those methods).
+
+> If you need hard guarantees here, the natural hardening would be: restrict methods to `GET`/`HEAD` by default, optionally pin each allowlist entry to a specific path/prefix, and add a source-IP allowlist. These are **not** implemented in the current version.
+
+---
+
 ## Endpoints
 
 | Method | Path | Auth | Purpose |
